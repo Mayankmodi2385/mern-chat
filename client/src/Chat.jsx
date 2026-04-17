@@ -43,24 +43,17 @@ export default function Chat() {
     });
     setOnlinePeople(people);
   }
+function handleMessage(ev) {
+  const messageData = JSON.parse(ev.data);
 
-  // ✅ FIXED MESSAGE HANDLER
-  function handleMessage(ev) {
-    const messageData = JSON.parse(ev.data);
-
-    if ('online' in messageData) {
-      showOnlinePeople(messageData.online);
-    } 
-    else if ('text' in messageData) {
-      // ✅ IMPORTANT FIX: handle both sender + receiver
-      if (
-        messageData.sender === selectedUserId ||
-        messageData.recipient === selectedUserId
-      ) {
-        setMessages(prev => ([...prev, messageData]));
-      }
-    }
+  if ('online' in messageData) {
+    showOnlinePeople(messageData.online);
+  } 
+  else if ('text' in messageData) {
+    // ✅ ALWAYS push message (fix)
+    setMessages(prev => ([...prev, messageData]));
   }
+}
 
   function logout() {
     axios.post('/logout').then(() => {
