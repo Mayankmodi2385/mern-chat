@@ -194,21 +194,17 @@ wss.on('connection', (connection, req) => {
     clearTimeout(connection.deathTimer);
   });
 
-  // READ COOKIE
-  const cookies = req.headers.cookie;
-  if (cookies) {
-    const tokenCookie = cookies.split(';').find(c => c.trim().startsWith('token='));
-    if (tokenCookie) {
-      const token = tokenCookie.split('=')[1];
+ // ✅ GET USER ID FROM URL (FIX FOR PRODUCTION)
+const url = req.url;
 
-      jwt.verify(token, jwtSecret, {}, (err, userData) => {
-        if (!err) {
-          connection.userId = userData.userId;
-          connection.username = userData.username;
-        }
-      });
-    }
+if (url.includes('?')) {
+  const params = new URLSearchParams(url.split('?')[1]);
+  const userId = params.get('userId');
+
+  if (userId) {
+    connection.userId = userId;
   }
+}
 
   connection.on('message', async (message) => {
     const {recipient, text, file} = JSON.parse(message.toString());
