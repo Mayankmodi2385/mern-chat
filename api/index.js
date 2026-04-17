@@ -226,6 +226,13 @@ wss.on('connection', (connection, req) => {
     }
 
     if (recipient && (text || file)) {
+
+      // 🔥 DEBUG LOG
+      console.log("SENDING MESSAGE:", {
+        sender: connection.userId,
+        recipient
+      });
+
       const messageDoc = await Message.create({
         sender: connection.userId,
         recipient,
@@ -233,13 +240,14 @@ wss.on('connection', (connection, req) => {
         file: filename,
       });
 
+      // 🔥 FIX: SEND TO BOTH USERS
       [...wss.clients]
         .filter(c => c.userId === recipient || c.userId === connection.userId)
         .forEach(c => c.send(JSON.stringify({
           text,
           sender: connection.userId,
           recipient,
-          file: filename,
+          file: file ? filename : null,
           _id: messageDoc._id,
         })));
     }
