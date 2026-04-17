@@ -15,11 +15,13 @@ export default function Chat() {
   const [messages,setMessages] = useState([]);
   const {username,id,setId,setUsername} = useContext(UserContext);
   const divUnderMessages = useRef();
+
   useEffect(() => {
     connectToWs();
   }, [selectedUserId]);
+
   function connectToWs() {
-   const ws = new WebSocket(import.meta.env.VITE_WS_URL);
+    const ws = new WebSocket(import.meta.env.VITE_WS_URL);
     setWs(ws);
     ws.addEventListener('message', handleMessage);
     ws.addEventListener('close', () => {
@@ -29,13 +31,17 @@ export default function Chat() {
       }, 1000);
     });
   }
+
   function showOnlinePeople(peopleArray) {
     const people = {};
-    peopleArray.forEach(({userId,username}) => {
-      people[userId] = username;
-    });
+    peopleArray
+      .filter(({userId, username}) => userId && username)
+      .forEach(({userId,username}) => {
+        people[userId] = username;
+      });
     setOnlinePeople(people);
   }
+
   function handleMessage(ev) {
     const messageData = JSON.parse(ev.data);
     console.log({ev,messageData});
@@ -47,6 +53,7 @@ export default function Chat() {
       }
     }
   }
+
   function logout() {
     axios.post('/logout').then(() => {
       setWs(null);
@@ -54,6 +61,7 @@ export default function Chat() {
       setUsername(null);
     });
   }
+
   function sendMessage(ev, file = null) {
     if (ev) ev.preventDefault();
     ws.send(JSON.stringify({
@@ -75,6 +83,7 @@ export default function Chat() {
       }]));
     }
   }
+
   function sendFile(ev) {
     const reader = new FileReader();
     reader.readAsDataURL(ev.target.files[0]);
