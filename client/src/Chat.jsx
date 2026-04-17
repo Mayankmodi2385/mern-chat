@@ -18,24 +18,32 @@ export default function Chat() {
   const divUnderMessages = useRef();
 
 useEffect(() => {
-  if (id) {
+  if (!id) return;
+
+  console.log("USER ID READY:", id);
+
+  setTimeout(() => {
     connectToWs();
-  }
+  }, 500); // ⬅️ delay ensures state is ready
+
 }, [id]);
 
  function connectToWs() {
-  if (!id) return;
+  if (!id) {
+    console.log("❌ Skipping WS, id not ready");
+    return;
+  }
 
-  console.log("Connecting WS with id:", id);
+  console.log("✅ Connecting WS with id:", id);
 
   const ws = new WebSocket(
     import.meta.env.VITE_API_URL.replace('https','wss') + '?userId=' + id
   );
 
-  setWs(ws); // VERY IMPORTANT
+  setWs(ws);
 
   ws.onopen = () => {
-    console.log("✅ WS Connected");
+    console.log("✅ WS Connected SUCCESS");
   };
 
   ws.onmessage = handleMessage;
