@@ -18,42 +18,46 @@ export default function Chat() {
 
   useEffect(() => {
     connectToWs();
-  }, [selectedUserId]);
+  }, []);
 
   function connectToWs() {
-    const ws = new WebSocket("wss://mern-chat-backend-g0fl.onrender.com");
+    const ws = new WebSocket(import.meta.env.VITE_API_URL.replace('https','wss'));
     setWs(ws);
 
     ws.addEventListener('message', handleMessage);
 
     ws.addEventListener('close', () => {
       setTimeout(() => {
-        console.log('Reconnecting...');
+        console.log('Disconnected. Reconnecting...');
         connectToWs();
       }, 1000);
     });
   }
 
-  function showOnlinePeople(peopleArray = []) {
+  function showOnlinePeople(peopleArray) {
     const people = {};
-    (peopleArray || []).forEach(({userId, username}) => {
-      if (userId && username) {
+    peopleArray.forEach(({userId,username}) => {
+      if (userId) {
         people[userId] = username;
       }
     });
     setOnlinePeople(people);
   }
 
+  // ✅ FIXED MESSAGE HANDLER
   function handleMessage(ev) {
-    const messageData = JSON.parse(ev.data || '{}');
+    const messageData = JSON.parse(ev.data);
 
-    if (messageData?.online) {
+    if ('online' in messageData) {
       showOnlinePeople(messageData.online);
-    }
-
-    if (messageData?.text) {
-      if (messageData.sender === selectedUserId) {
-        setMessages(prev => [...prev, messageData]);
+    } 
+    else if ('text' in messageData) {
+      // ✅ IMPORTANT FIX: handle both sender + receiver
+      if (
+        messageData.sender === selectedUserId ||
+        messageData.recipient === selectedUserId
+      ) {
+        setMessages(prev => ([...prev, messageData]));
       }
     }
   }
@@ -68,6 +72,7 @@ export default function Chat() {
 
   function sendMessage(ev, file = null) {
     if (ev) ev.preventDefault();
+
     if (!ws) return;
 
     ws.send(JSON.stringify({
@@ -78,7 +83,7 @@ export default function Chat() {
 
     if (file) {
       axios.get('/messages/'+selectedUserId).then(res => {
-        setMessages(res.data || []);
+        setMessages(res.data);
       });
     } else {
       setNewMessageText('');
@@ -112,45 +117,40 @@ export default function Chat() {
 
   useEffect(() => {
     axios.get('/people').then(res => {
-      const data = res.data || [];
+      const offlinePeopleArr = res.data
+        .filter(p => p._id !== id)
+        .filter(p => !Object.keys(onlinePeople).includes(p._id));
 
-      const offlinePeopleArr = data
-        .filter(p => p && p._id !== id)
-        .filter(p => !(Object.keys(onlinePeople || {}).includes(p._id)));
-
-      const offline = {};
+      const offlinePeople = {};
       offlinePeopleArr.forEach(p => {
-        if (p && p._id) {
-          offline[p._id] = p;
-        }
+        offlinePeople[p._id] = p;
       });
 
-      setOfflinePeople(offline);
+      setOfflinePeople(offlinePeople);
     });
   }, [onlinePeople]);
 
   useEffect(() => {
     if (selectedUserId) {
       axios.get('/messages/'+selectedUserId).then(res => {
-        setMessages(res.data || []);
+        setMessages(res.data);
       });
     }
   }, [selectedUserId]);
 
-  const onlinePeopleExclOurUser = {...(onlinePeople || {})};
+  const onlinePeopleExclOurUser = {...onlinePeople};
   delete onlinePeopleExclOurUser[id];
 
-  const messagesWithoutDupes = uniqBy(messages || [], '_id');
+  const messagesWithoutDupes = uniqBy(messages, '_id');
 
   return (
     <div className="flex h-screen">
-
-      {/* LEFT */}
+      {/* LEFT SIDE */}
       <div className="bg-white w-1/3 flex flex-col">
         <div className="flex-grow">
           <Logo />
 
-          {(Object.keys(onlinePeopleExclOurUser || {})).map(userId => (
+          {Object.keys(onlinePeopleExclOurUser).map(userId => (
             <Contact
               key={userId}
               id={userId}
@@ -161,12 +161,12 @@ export default function Chat() {
             />
           ))}
 
-          {(Object.keys(offlinePeople || {})).map(userId => (
+          {Object.keys(offlinePeople).map(userId => (
             <Contact
               key={userId}
               id={userId}
               online={false}
-              username={offlinePeople[userId]?.username || ''}
+              username={offlinePeople[userId].username}
               onClick={() => setSelectedUserId(userId)}
               selected={userId === selectedUserId}
             />
@@ -174,23 +174,22 @@ export default function Chat() {
         </div>
 
         <div className="p-2 text-center flex items-center justify-center">
-          <span className="mr-2 text-sm text-gray-600">
-            {username || ''}
-          </span>
-
-          <button onClick={logout} className="text-sm bg-blue-100 py-1 px-2 border rounded-sm">
+          <span className="mr-2 text-sm text-gray-600">{username}</span>
+          <button
+            onClick={logout}
+            className="text-sm bg-blue-100 py-1 px-2 border rounded-sm">
             logout
           </button>
         </div>
       </div>
 
-      {/* RIGHT */}
+      {/* RIGHT SIDE */}
       <div className="flex flex-col bg-blue-50 w-2/3 p-2">
         <div className="flex-grow">
 
           {!selectedUserId && (
-            <div className="flex h-full items-center justify-center">
-              <div className="text-gray-300">Select a user</div>
+            <div className="flex h-full items-center justify-center text-gray-300">
+              ← Select a user
             </div>
           )}
 
@@ -198,17 +197,21 @@ export default function Chat() {
             <div className="relative h-full">
               <div className="overflow-y-scroll absolute inset-0 bottom-2">
 
-                {(messagesWithoutDupes || []).map(message => (
-                  <div key={message._id} className={message.sender === id ? 'text-right' : 'text-left'}>
-                    <div className={`inline-block p-2 my-2 rounded-md text-sm ${
-                      message.sender === id ? 'bg-blue-500 text-white' : 'bg-white text-gray-500'
-                    }`}>
-                      {message.text || ''}
+                {messagesWithoutDupes.map(message => (
+                  <div key={message._id} className={message.sender === id ? 'text-right':'text-left'}>
+                    <div className={
+                      "inline-block p-2 my-2 rounded-md text-sm " +
+                      (message.sender === id ? 'bg-blue-500 text-white':'bg-white text-gray-500')
+                    }>
+                      {message.text}
 
                       {message.file && (
-                        <a href={`${axios.defaults.baseURL}/uploads/${message.file}`} target="_blank">
-                          {message.file}
-                        </a>
+                        <div>
+                          <a target="_blank"
+                             href={axios.defaults.baseURL + '/uploads/' + message.file}>
+                            {message.file}
+                          </a>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -223,14 +226,21 @@ export default function Chat() {
         {!!selectedUserId && (
           <form className="flex gap-2" onSubmit={sendMessage}>
             <input
+              type="text"
               value={newMessageText}
-              onChange={e => setNewMessageText(e.target.value)}
-              className="flex-grow p-2 border"
+              onChange={ev => setNewMessageText(ev.target.value)}
+              placeholder="Type message"
+              className="bg-white flex-grow border rounded-sm p-2"
             />
 
-            <input type="file" onChange={sendFile} />
+            <label className="bg-blue-200 p-2 cursor-pointer rounded-sm">
+              <input type="file" className="hidden" onChange={sendFile} />
+              📎
+            </label>
 
-            <button className="bg-blue-500 text-white p-2">Send</button>
+            <button className="bg-blue-500 p-2 text-white rounded-sm">
+              Send
+            </button>
           </form>
         )}
       </div>
