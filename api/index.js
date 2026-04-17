@@ -13,7 +13,7 @@ const fs = require('fs');
 dotenv.config();
 
 // ✅ MongoDB
-mongoose.connect("mongodb://127.0.0.1:27017/chat-app")
+mongoose.connect(process.env.MONGO_URL)
   .then(() => console.log("MongoDB connected"))
   .catch(err => console.log(err));
 
@@ -105,7 +105,7 @@ app.post('/login', async (req,res) => {
 
     res.cookie('token', token, {
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: 'none',
       secure: true,
       sameSite: 'none',
     }).json({ id: foundUser._id });
@@ -129,7 +129,7 @@ app.post('/register', async (req,res) => {
 
       res.cookie('token', token, {
         httpOnly: true,
-        sameSite: 'lax',
+        sameSite: 'none',
         secure: true,
         sameSite: 'none',
       }).status(201).json({ id: createdUser._id });
@@ -144,7 +144,7 @@ app.post('/register', async (req,res) => {
 app.post('/logout', (req,res) => {
   res.cookie('token', '', {
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: 'none',
     secure: true,
     sameSite: 'none',
   }).json('ok');
