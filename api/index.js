@@ -167,47 +167,47 @@ const wss = new ws.WebSocketServer({ server });
 
 wss.on('connection', (connection, req) => {
 
+  // ✅ GET USER ID FROM URL
+  const url = req.url;
+  let userId = null;
+
+  if (url.includes('?')) {
+    const params = new URLSearchParams(url.split('?')[1]);
+    userId = params.get('userId');
+  }
+
+  connection.userId = userId;
+
+  console.log("WS CONNECTED:", userId);
+
   function notifyAboutOnlinePeople() {
     [...wss.clients].forEach(client => {
       client.send(JSON.stringify({
-        online: [...wss.clients].map(c => ({
-          userId: c.userId,
-          username: c.username
-        })),
+        online: [...wss.clients]
+          .filter(c => c.userId)
+          .map(c => ({
+            userId: c.userId,
+          })),
       }));
     });
   }
 
-  connection.isAlive = true;
-
-  connection.timer = setInterval(() => {
-    connection.ping();
-    connection.deathTimer = setTimeout(() => {
-      connection.isAlive = false;
-      clearInterval(connection.timer);
-      connection.terminate();
-      notifyAboutOnlinePeople();
-    }, 1000);
-  }, 5000);
-
-  connection.on('pong', () => {
-    clearTimeout(connection.deathTimer);
-  });
-
- // ✅ GET USER ID FROM URL (FIX FOR PRODUCTION)
-const url = req.url;
-
-if (url.includes('?')) {
-  const params = new URLSearchParams(url.split('?')[1]);
-  const userId = params.get('userId');
-
-  if (userId) {
-    connection.userId = userId;
-  }
-}
-
   connection.on('message', async (message) => {
-    const {recipient, text, file} = JSON.parse(message.toString());
+    const data = JSON.parse(message.toString());
+
+    console.log("WS MESSAGE RECEIVED:", data);
+
+    const {recipient, text, file} = data;
+
+    if (!connection.userId) {
+      console.log("❌ No sender userId");
+      return;
+    }
+
+    if (!recipient) {
+      console.log("❌ No recipient");
+      return;
+    }
 
     let filename = null;
 
@@ -221,32 +221,30 @@ if (url.includes('?')) {
       fs.writeFile(path, buffer, () => {});
     }
 
-    if (recipient && (text || file)) {
+    const messageDoc = await Message.create({
+      sender: connection.userId,
+      recipient,
+      text,
+      file: filename,
+    });
 
-      // 🔥 DEBUG LOG
-      console.log("SENDING MESSAGE:", {
-        sender: connection.userId,
-        recipient
-      });
+    console.log("SENDING TO USERS:", connection.userId, "→", recipient);
 
-      const messageDoc = await Message.create({
-        sender: connection.userId,
-        recipient,
-        text,
-        file: filename,
-      });
-
-      // 🔥 FIX: SEND TO BOTH USERS
-      [...wss.clients]
-        .filter(c => c.userId === recipient || c.userId === connection.userId)
-        .forEach(c => c.send(JSON.stringify({
+    // ✅ SEND TO BOTH USERS
+    [...wss.clients].forEach(client => {
+      if (
+        client.userId === recipient ||
+        client.userId === connection.userId
+      ) {
+        client.send(JSON.stringify({
           text,
           sender: connection.userId,
           recipient,
-          file: file ? filename : null,
+          file: filename,
           _id: messageDoc._id,
-        })));
-    }
+        }));
+      }
+    });
   });
 
   notifyAboutOnlinePeople();

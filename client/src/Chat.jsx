@@ -23,25 +23,28 @@ useEffect(() => {
   }
 }, [id]);
 
-  function connectToWs() {
-  console.log("Connecting WS with userId:", id);
+ function connectToWs() {
+  if (!id) return;
+
+  console.log("Connecting WS with id:", id);
 
   const ws = new WebSocket(
     import.meta.env.VITE_API_URL.replace('https','wss') + '?userId=' + id
   );
 
-  setWs(ws); // ✅ IMPORTANT
+  setWs(ws); // VERY IMPORTANT
 
-  ws.addEventListener('message', handleMessage);
+  ws.onopen = () => {
+    console.log("✅ WS Connected");
+  };
 
-  ws.addEventListener('close', () => {
-    setTimeout(() => {
-      console.log('Disconnected. Reconnecting...');
-      connectToWs();
-    }, 1000);
-  });
+  ws.onmessage = handleMessage;
+
+  ws.onclose = () => {
+    console.log("❌ WS closed, reconnecting...");
+    setTimeout(() => connectToWs(), 1000);
+  };
 }
-
   function showOnlinePeople(peopleArray) {
     const people = {};
     peopleArray.forEach(({userId,username}) => {
