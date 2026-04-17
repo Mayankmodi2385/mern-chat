@@ -3,8 +3,9 @@ import {UserContextProvider} from "./UserContext";
 import Routes from "./Routes";
 
 function App() {
-  axios.defaults.baseURL = 'http://mern-chat-backend-g0fl.onrender.com';
-  axios.defaults.withCredentials = true;
+
+axios.defaults.baseURL = import.meta.env.VITE_API_URL;
+axios.defaults.withCredentials = true;
   return (
     <UserContextProvider>
       <Routes />
