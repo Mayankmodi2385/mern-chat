@@ -6,6 +6,7 @@ import {uniqBy} from "lodash";
 import axios from "axios";
 import Contact from "./Contact";
 
+
 export default function Chat() {
   const [ws,setWs] = useState(null);
   const [onlinePeople,setOnlinePeople] = useState({});
@@ -16,23 +17,30 @@ export default function Chat() {
   const {username,id,setId,setUsername} = useContext(UserContext);
   const divUnderMessages = useRef();
 
-  useEffect(() => {
+useEffect(() => {
+  if (id) {
     connectToWs();
-  }, []);
+  }
+}, [id]);
 
   function connectToWs() {
-    const ws = new WebSocket(import.meta.env.VITE_API_URL.replace('https','wss') + '?userId=' + id);
-    setWs(ws);
+  console.log("Connecting WS with userId:", id);
 
-    ws.addEventListener('message', handleMessage);
+  const ws = new WebSocket(
+    import.meta.env.VITE_API_URL.replace('https','wss') + '?userId=' + id
+  );
 
-    ws.addEventListener('close', () => {
-      setTimeout(() => {
-        console.log('Disconnected. Reconnecting...');
-        connectToWs();
-      }, 1000);
-    });
-  }
+  setWs(ws); // ✅ IMPORTANT
+
+  ws.addEventListener('message', handleMessage);
+
+  ws.addEventListener('close', () => {
+    setTimeout(() => {
+      console.log('Disconnected. Reconnecting...');
+      connectToWs();
+    }, 1000);
+  });
+}
 
   function showOnlinePeople(peopleArray) {
     const people = {};
