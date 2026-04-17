@@ -29,7 +29,7 @@ app.use(cookieParser());
 // ✅ CORS FIX
 app.use(cors({
   credentials: true,
-  origin: "https://your-frontend-url.vercel.app",
+  origin: "https://your-vercel-url.vercel.app",
 }));
 
 // ✅ HELPER FUNCTION (SAFE)
