@@ -12,11 +12,12 @@ const fs = require('fs');
 
 dotenv.config();
 
-// ✅ MongoDB
+// ---------------- DB ----------------
 mongoose.connect(process.env.MONGO_URL)
   .then(() => console.log("MongoDB connected"))
   .catch(err => console.log(err));
 
+// ---------------- CONFIG ----------------
 const jwtSecret = process.env.JWT_SECRET || "secret123";
 const bcryptSalt = bcrypt.genSaltSync(10);
 
@@ -26,13 +27,13 @@ app.use('/uploads', express.static(__dirname + '/uploads'));
 app.use(express.json());
 app.use(cookieParser());
 
-// ✅ CORS FIX
+// ---------------- CORS ----------------
 app.use(cors({
   credentials: true,
-  origin: "https://your-vercel-url.vercel.app",
+  origin: process.env.CLIENT_URL,
 }));
 
-// ✅ HELPER FUNCTION (SAFE)
+// ---------------- HELPER ----------------
 async function getUserDataFromRequest(req) {
   return new Promise((resolve, reject) => {
     const token = req.cookies?.token;
@@ -46,6 +47,10 @@ async function getUserDataFromRequest(req) {
 }
 
 // ---------------- ROUTES ----------------
+
+app.get('/', (req,res) => {
+  res.send("Backend is running 🚀");
+});
 
 app.get('/test', (req,res) => {
   res.json('test ok');
@@ -85,20 +90,15 @@ app.get('/profile', (req,res) => {
 
 // ---------------- AUTH ----------------
 
-// ✅ LOGIN FIXED
+// LOGIN
 app.post('/login', async (req,res) => {
   const {username, password} = req.body;
-  const foundUser = await User.findOne({username});
 
-  if (!foundUser) {
-    return res.status(404).json('user not found');
-  }
+  const foundUser = await User.findOne({username});
+  if (!foundUser) return res.status(404).json('user not found');
 
   const passOk = bcrypt.compareSync(password, foundUser.password);
-
-  if (!passOk) {
-    return res.status(401).json('wrong password');
-  }
+  if (!passOk) return res.status(401).json('wrong password');
 
   jwt.sign({userId:foundUser._id, username}, jwtSecret, {}, (err, token) => {
     if (err) return res.status(500).json('token error');
@@ -107,12 +107,11 @@ app.post('/login', async (req,res) => {
       httpOnly: true,
       sameSite: 'none',
       secure: true,
-      sameSite: 'none',
     }).json({ id: foundUser._id });
   });
 });
 
-// ✅ REGISTER FIXED
+// REGISTER
 app.post('/register', async (req,res) => {
   const {username,password} = req.body;
 
@@ -131,7 +130,6 @@ app.post('/register', async (req,res) => {
         httpOnly: true,
         sameSite: 'none',
         secure: true,
-        sameSite: 'none',
       }).status(201).json({ id: createdUser._id });
     });
 
@@ -140,20 +138,21 @@ app.post('/register', async (req,res) => {
   }
 });
 
-// ✅ LOGOUT FIXED
+// LOGOUT
 app.post('/logout', (req,res) => {
   res.cookie('token', '', {
     httpOnly: true,
     sameSite: 'none',
     secure: true,
-    sameSite: 'none',
   }).json('ok');
 });
 
 // ---------------- SERVER ----------------
 
-const server = app.listen(4000, () => {
-  console.log("Server running on port 4000");
+const PORT = process.env.PORT || 4000;
+
+const server = app.listen(PORT, () => {
+  console.log("Server running on port", PORT);
 });
 
 // ---------------- WEBSOCKET ----------------
@@ -189,7 +188,7 @@ wss.on('connection', (connection, req) => {
     clearTimeout(connection.deathTimer);
   });
 
-  // ✅ COOKIE READ FIX
+  // READ COOKIE
   const cookies = req.headers.cookie;
   if (cookies) {
     const tokenCookie = cookies.split(';').find(c => c.trim().startsWith('token='));
