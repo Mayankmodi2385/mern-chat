@@ -19,7 +19,7 @@ export default function Chat() {
     connectToWs();
   }, [selectedUserId]);
   function connectToWs() {
-    const ws = new WebSocket('wss://mern-chat-backend-g0fl.onrender.com');
+   const ws = new WebSocket(import.meta.env.VITE_WS_URL);
     setWs(ws);
     ws.addEventListener('message', handleMessage);
     ws.addEventListener('close', () => {

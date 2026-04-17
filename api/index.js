@@ -30,7 +30,13 @@ app.use(cookieParser());
 // ---------------- CORS ----------------
 app.use(cors({
   credentials: true,
-  origin: "https://mern-chat-sandy-phi.vercel.app",
+  origin: function(origin, callback) {
+    if (!origin || /\.vercel\.app$/.test(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  }
 }));
 
 // ---------------- HELPER ----------------
