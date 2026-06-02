@@ -124,15 +124,6 @@ npm run dev
 | GET | /api/chat/:id | Get Messages |
 | POST | /api/chat/send/:id | Send Message |
 
-## 📸 Screenshots
-
-Add your project screenshots here.
-
-### Login Page
-![Login Screenshot](screenshots/login.png)
-
-### Chat Dashboard
-![Chat Screenshot](screenshots/chat.png)
 
 ## 🔒 Security Features
 
@@ -170,9 +161,9 @@ This project is licensed under the MIT License.
 
 Mayank Modi
 
-LinkedIn: https://linkedin.com/in/your-linkedin-profile
+LinkedIn: https://www.linkedin.com/in/modimayank63/
 
-GitHub: https://github.com/your-github-username
+GitHub: https://github.com/Mayankmodi2385
 
 ---
 
